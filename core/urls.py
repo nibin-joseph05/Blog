@@ -17,7 +17,7 @@ urlpatterns = [
     
     # User Interaction URLs
     path('toggle-theme/', views.toggle_theme, name='toggle_theme'),
-    path('post/<int:post_id>/like/', views.toggle_like, name='toggle_like'),
+    path('post/<slug:slug>/like/', views.like_post, name='like_post'),
     path('post/<int:post_id>/add-comment/', views.add_comment, name='add_comment'),
     
     # Notification URLs

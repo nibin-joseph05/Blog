@@ -253,34 +253,45 @@ def reject_comment(request, comment_id):
     
     return JsonResponse({'status': 'success'})
 
-@login_required
+@require_POST
 def add_comment(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Please login to comment',
+            'redirect_url': reverse('core:login') + f'?next={request.path}'
+        }, status=401)
+        
     post = get_object_or_404(Post, id=post_id)
+    content = request.POST.get('content')
     
-    if request.method == 'POST':
-        content = request.POST.get('content')
-        if content:
-            comment = Comment.objects.create(
-                post=post,
-                author=request.user,
-                content=content
+    if content:
+        comment = Comment.objects.create(
+            post=post,
+            author=request.user,
+            content=content
+        )
+        
+        # Create notification for post owner
+        if post.author != request.user:
+            Notification.objects.create(
+                recipient=post.author,
+                sender=request.user,
+                notification_type='comment',
+                message=f"{request.user.username} commented on your post '{post.title}'",
+                link=post.slug
             )
-            
-            # Return the new comment HTML for AJAX
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                html = render_to_string('core/includes/comment.html', {
-                    'comment': comment
-                }, request=request)
-                return JsonResponse({
-                    'status': 'success',
-                    'html': html
-                })
-            
-            messages.success(request, 'Your comment has been added.')
-        else:
-            messages.error(request, 'Please provide a comment.')
+        
+        return JsonResponse({
+            'status': 'success',
+            'username': request.user.get_full_name() or request.user.username,
+            'content': content
+        })
     
-    return redirect('core:post_detail', slug=post.slug)
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Comment content is required'
+    }, status=400)
 
 @login_required
 def notifications(request):
@@ -539,3 +550,29 @@ def profile(request):
         'liked_posts': liked_posts,
     }
     return render(request, 'core/auth/profile.html', context)
+
+@login_required
+@require_POST
+def like_post(request, slug):
+    post = get_object_or_404(Post, slug=slug)
+    
+    if request.user in post.likes.all():
+        post.likes.remove(request.user)
+        liked = False
+    else:
+        post.likes.add(request.user)
+        liked = True
+        # Create notification for post owner
+        if post.author != request.user:
+            Notification.objects.create(
+                recipient=post.author,
+                sender=request.user,
+                notification_type='like',
+                message=f"{request.user.username} liked your post '{post.title}'",
+                link=post.slug
+            )
+    
+    return JsonResponse({
+        'liked': liked,
+        'likes_count': post.likes.count()
+    })
