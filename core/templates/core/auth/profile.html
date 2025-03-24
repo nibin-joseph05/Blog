@@ -1,0 +1,108 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Profile - Blog{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Profile Sidebar -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    {% if user.profile.profile_picture %}
+                        <img src="{{ user.profile.profile_picture.url }}" alt="Profile Picture" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                    {% else %}
+                        <img src="{% static 'core/images/default-profile.png' %}" alt="Default Profile Picture" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                    {% endif %}
+                    <h4>{{ user.get_full_name|default:user.username }}</h4>
+                    <p class="text-muted">@{{ user.username }}</p>
+                    <p class="text-muted">{{ user.email }}</p>
+                    {% if user.profile.bio %}
+                        <p>{{ user.profile.bio }}</p>
+                    {% endif %}
+                    <a href="{% url 'core:edit_profile' %}" class="btn btn-primary">Edit Profile</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Content -->
+        <div class="col-md-8">
+            <!-- User's Posts -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">My Posts</h5>
+                </div>
+                <div class="card-body">
+                    {% if user_posts %}
+                        <div class="list-group">
+                            {% for post in user_posts %}
+                                <a href="{% url 'core:post_detail' post.slug %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ post.title }}</h6>
+                                        <small class="text-muted">{{ post.created_at|date:"M d, Y" }}</small>
+                                    </div>
+                                    <p class="mb-1">{{ post.content|truncatewords:30 }}</p>
+                                    <small>Category: {{ post.category.name }}</small>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">You haven't written any posts yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- User's Comments -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">My Comments</h5>
+                </div>
+                <div class="card-body">
+                    {% if user_comments %}
+                        <div class="list-group">
+                            {% for comment in user_comments %}
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">On: {{ comment.post.title }}</h6>
+                                        <small class="text-muted">{{ comment.created_at|date:"M d, Y" }}</small>
+                                    </div>
+                                    <p class="mb-1">{{ comment.content }}</p>
+                                    <a href="{% url 'core:post_detail' comment.post.slug %}" class="btn btn-sm btn-outline-primary">View Post</a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">You haven't made any comments yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- User's Likes -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Liked Posts</h5>
+                </div>
+                <div class="card-body">
+                    {% if liked_posts %}
+                        <div class="list-group">
+                            {% for post in liked_posts %}
+                                <a href="{% url 'core:post_detail' post.slug %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ post.title }}</h6>
+                                        <small class="text-muted">{{ post.created_at|date:"M d, Y" }}</small>
+                                    </div>
+                                    <p class="mb-1">{{ post.content|truncatewords:30 }}</p>
+                                    <small>By: {{ post.author.get_full_name|default:post.author.username }}</small>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">You haven't liked any posts yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

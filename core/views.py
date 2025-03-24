@@ -12,16 +12,17 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
 from django.utils import timezone
+from django.core.mail import send_mail
+from django.utils.crypto import get_random_string
+import random
+import string
 
 def is_admin(user):
     return user.email == 'admin@gmail.com'
 
 def ensure_user_profile(user):
     """Ensure that a UserProfile exists for the given user."""
-    try:
-        profile = user.userprofile
-    except UserProfile.DoesNotExist:
-        profile = UserProfile.objects.create(user=user)
+    profile, created = UserProfile.objects.get_or_create(user=user)
     return profile
 
 def register_view(request):
@@ -45,7 +46,12 @@ def register_view(request):
 
         with transaction.atomic():
             user = User.objects.create_user(username=username, email=email, password=password)
-            ensure_user_profile(user)
+            profile = ensure_user_profile(user)
+            
+            # Handle profile picture upload
+            if 'profile_picture' in request.FILES:
+                profile.profile_picture = request.FILES['profile_picture']
+                profile.save()
             
         messages.success(request, 'Registration successful! Please login.')
         return redirect('core:login')
@@ -404,3 +410,131 @@ def delete_user(request, user_id):
     if user.email != 'admin@gmail.com':  # Prevent deleting admin
         user.delete()
     return JsonResponse({'status': 'success'})
+
+@login_required
+def edit_profile(request):
+    if request.method == 'POST':
+        user = request.user
+        user.username = request.POST.get('username')
+        user.email = request.POST.get('email')
+        user.first_name = request.POST.get('first_name')
+        user.last_name = request.POST.get('last_name')
+        user.save()
+
+        # Get or create profile
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        profile.bio = request.POST.get('bio')
+        profile.theme_preference = request.POST.get('theme')
+        
+        if 'profile_picture' in request.FILES:
+            profile.profile_picture = request.FILES['profile_picture']
+        
+        profile.save()
+        messages.success(request, 'Profile updated successfully!')
+        return redirect('core:profile')
+    
+    return render(request, 'core/auth/edit_profile.html')
+
+def forgot_password(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            user = User.objects.get(email=email)
+            # Generate OTP
+            otp = ''.join(random.choices(string.digits, k=6))
+            # Store OTP in session
+            request.session['reset_otp'] = otp
+            request.session['reset_email'] = email
+            # Store expiry time as ISO format string
+            request.session['otp_expiry'] = (timezone.now() + timezone.timedelta(minutes=10)).isoformat()
+            
+            # Send OTP via email
+            send_mail(
+                'Password Reset OTP',
+                f'Your OTP for password reset is: {otp}. This OTP will expire in 10 minutes.',
+                'nibinjoseph2003@gmail.com',
+                [email],
+                fail_silently=False,
+            )
+            messages.success(request, 'OTP has been sent to your email.')
+            return redirect('core:verify_otp')
+        except User.DoesNotExist:
+            messages.error(request, 'No user found with this email address.')
+    
+    return render(request, 'core/auth/forgot_password.html')
+
+def verify_otp(request):
+    if request.method == 'POST':
+        otp = request.POST.get('otp')
+        stored_otp = request.session.get('reset_otp')
+        expiry_str = request.session.get('otp_expiry')
+        
+        if not stored_otp or not expiry_str:
+            messages.error(request, 'OTP session expired. Please request a new OTP.')
+            return redirect('core:forgot_password')
+        
+        # Convert string back to datetime
+        expiry = timezone.datetime.fromisoformat(expiry_str)
+        if timezone.now() > expiry:
+            messages.error(request, 'OTP has expired. Please request a new OTP.')
+            return redirect('core:forgot_password')
+        
+        if otp == stored_otp:
+            return redirect('core:reset_password')
+        else:
+            messages.error(request, 'Invalid OTP. Please try again.')
+    
+    return render(request, 'core/auth/verify_otp.html')
+
+def reset_password(request):
+    if request.method == 'POST':
+        email = request.session.get('reset_email')
+        if not email:
+            messages.error(request, 'Session expired. Please try again.')
+            return redirect('core:forgot_password')
+        
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        if new_password != confirm_password:
+            messages.error(request, 'Passwords do not match.')
+            return render(request, 'core/auth/reset_password.html')
+        
+        try:
+            user = User.objects.get(email=email)
+            user.set_password(new_password)
+            user.save()
+            
+            # Clear session data
+            del request.session['reset_otp']
+            del request.session['reset_email']
+            del request.session['otp_expiry']
+            
+            messages.success(request, 'Password has been reset successfully. Please login with your new password.')
+            return redirect('core:login')
+        except User.DoesNotExist:
+            messages.error(request, 'User not found.')
+            return redirect('core:forgot_password')
+    
+    return render(request, 'core/auth/reset_password.html')
+
+@login_required
+def profile(request):
+    # Get or create profile
+    profile, created = UserProfile.objects.get_or_create(user=request.user)
+    
+    # Get user's posts
+    user_posts = Post.objects.filter(author=request.user).order_by('-created_at')
+    
+    # Get user's comments
+    user_comments = Comment.objects.filter(author=request.user).order_by('-created_at')
+    
+    # Get user's liked posts
+    liked_posts = Post.objects.filter(likes=request.user).order_by('-created_at')
+    
+    context = {
+        'user_posts': user_posts,
+        'user_comments': user_comments,
+        'liked_posts': liked_posts,
+    }
+    return render(request, 'core/auth/profile.html', context)

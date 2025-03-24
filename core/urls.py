@@ -33,4 +33,9 @@ urlpatterns = [
     path('admin-dashboard/comment/<int:comment_id>/approve/', views.approve_comment, name='approve_comment'),
     path('admin-dashboard/comment/<int:comment_id>/reject/', views.reject_comment, name='reject_comment'),
     path('admin-dashboard/user/<int:user_id>/delete/', views.delete_user, name='delete_user'),
+    path('profile/edit/', views.edit_profile, name='edit_profile'),
+    path('forgot-password/', views.forgot_password, name='forgot_password'),
+    path('verify-otp/', views.verify_otp, name='verify_otp'),
+    path('reset-password/', views.reset_password, name='reset_password'),
+    path('profile/', views.profile, name='profile'),
 ] 
