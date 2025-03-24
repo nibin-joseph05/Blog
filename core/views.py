@@ -192,8 +192,9 @@ def search_posts(request):
 def toggle_theme(request):
     theme = request.POST.get('theme')
     if theme in ['light', 'dark']:
-        request.user.userprofile.theme_preference = theme
-        request.user.userprofile.save()
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        profile.theme_preference = theme
+        profile.save()
         return JsonResponse({'status': 'success', 'theme': theme})
     return JsonResponse({'status': 'error'}, status=400)
 

@@ -183,6 +183,11 @@
                             <a class="nav-link" href="{% url 'core:register' %}">Register</a>
                         </li>
                     {% endif %}
+                    <li class="nav-item">
+                        <button class="btn btn-link nav-link" id="theme-toggle">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -239,37 +244,52 @@
     <script>
         // Theme toggle functionality
         document.addEventListener('DOMContentLoaded', function() {
-            const themeToggle = document.getElementById('themeToggle');
-            const html = document.documentElement;
+            const themeToggle = document.getElementById('theme-toggle');
+            const icon = themeToggle.querySelector('i');
+            
+            // Set initial theme
+            const currentTheme = '{{ request.user.profile.theme_preference|default:"light" }}';
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            updateThemeIcon(currentTheme);
             
             themeToggle.addEventListener('click', function() {
-                const currentTheme = html.getAttribute('data-theme');
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
                 
-                html.setAttribute('data-theme', newTheme);
+                // Update theme
+                document.documentElement.setAttribute('data-theme', newTheme);
+                updateThemeIcon(newTheme);
                 
-                // Save theme preference if user is authenticated
-                {% if user.is_authenticated %}
+                // Save theme preference
                 fetch('{% url "core:toggle_theme" %}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'X-CSRFToken': '{{ csrf_token }}'
                     },
-                    body: 'theme=' + newTheme
+                    body: `theme=${newTheme}`
                 });
-                {% else %}
-                localStorage.setItem('theme', newTheme);
-                {% endif %}
             });
             
-            // Set initial theme from localStorage for non-authenticated users
-            {% if not user.is_authenticated %}
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme) {
-                html.setAttribute('data-theme', savedTheme);
+            function updateThemeIcon(theme) {
+                icon.className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
             }
-            {% endif %}
+            
+            // Notification count update
+            function updateNotificationCount() {
+                fetch('{% url "core:get_notification_count" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        const countElement = document.querySelector('.notification-count');
+                        if (countElement) {
+                            countElement.textContent = data.count;
+                        }
+                    });
+            }
+            
+            // Update notification count every 30 seconds
+            updateNotificationCount();
+            setInterval(updateNotificationCount, 30000);
         });
 
         // Like functionality
