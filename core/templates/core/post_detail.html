@@ -1,0 +1,173 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ post.title }} - Blog{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Post Content -->
+            <article>
+                <header class="mb-4">
+                    <h1 class="fw-bold">{{ post.title }}</h1>
+                    <div class="text-muted fst-italic mb-2">
+                        Posted on {{ post.created_at|date:"F d, Y" }} by {{ post.author.get_full_name|default:post.author.username }}
+                    </div>
+                    <div class="d-flex align-items-center mb-3">
+                        <a href="{% url 'core:category_posts' post.category.slug %}" class="badge bg-secondary text-decoration-none me-2">
+                            {{ post.category.name }}
+                        </a>
+                        <div class="d-flex align-items-center">
+                            {% if user.is_authenticated %}
+                            <button class="btn btn-sm {% if user in post.likes.all %}btn-danger{% else %}btn-outline-danger{% endif %}"
+                                    onclick="toggleLike({{ post.id }})">
+                                <i class="fas fa-heart"></i>
+                                <span id="like-count">{{ post.like_count }}</span>
+                            </button>
+                            {% endif %}
+                            <span class="ms-3">
+                                <i class="fas fa-eye"></i> {{ post.views }}
+                            </span>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Post Content -->
+                <section class="mb-5">
+                    {{ post.content|safe }}
+                </section>
+            </article>
+
+            <!-- Comments Section -->
+            <section id="comments" class="mb-5">
+                <h4 class="mb-4">Comments</h4>
+                
+                {% if user.is_authenticated %}
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <form method="post" action="{% url 'core:add_comment' post.id %}" id="comment-form" class="mb-4">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <textarea name="content" class="form-control" rows="3" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary mt-2">Add Comment</button>
+                        </form>
+                    </div>
+                </div>
+                {% elif not user.is_authenticated %}
+                <div class="alert alert-info">
+                    Please <a href="{% url 'core:login' %}">login</a> to leave a comment.
+                </div>
+                {% endif %}
+
+                <div class="comments-section">
+                    <h6>Comments</h6>
+                    {% for comment in comments %}
+                    <div class="comment mb-3" id="comment-{{ comment.id }}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">{{ comment.author.get_full_name|default:comment.author.username }}</h6>
+                                <p class="mb-1">{{ comment.content }}</p>
+                                <small class="text-muted">{{ comment.created_at|timesince }} ago</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">No comments yet.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Related Posts -->
+            <div class="card mb-4">
+                <div class="card-header">Related Posts</div>
+                <div class="card-body">
+                    {% for related_post in related_posts %}
+                    <div class="mb-3">
+                        <h6 class="mb-1">
+                            <a href="{% url 'core:post_detail' related_post.slug %}" class="text-decoration-none">
+                                {{ related_post.title }}
+                            </a>
+                        </h6>
+                        <small class="text-muted">{{ related_post.created_at|date:"F d, Y" }}</small>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">No related posts found.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Categories -->
+            <div class="card">
+                <div class="card-header">Categories</div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for category in categories %}
+                        <div class="col-6">
+                            <a href="{% url 'core:category_posts' category.slug %}" class="text-decoration-none">
+                                {{ category.name }}
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleLike(postId) {
+    fetch(`/post/${postId}/like/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const button = document.querySelector(`button[onclick="toggleLike(${postId})"]`);
+            const countElement = document.getElementById('like-count');
+            
+            if (data.liked) {
+                button.classList.remove('btn-outline-danger');
+                button.classList.add('btn-danger');
+            } else {
+                button.classList.remove('btn-danger');
+                button.classList.add('btn-outline-danger');
+            }
+            
+            countElement.textContent = data.like_count;
+        }
+    });
+}
+
+document.getElementById('comment-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const form = this;
+    const formData = new FormData(form);
+    
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const commentsSection = document.querySelector('.comments-section');
+            commentsSection.insertAdjacentHTML('afterbegin', data.html);
+            form.reset();
+        }
+    });
+});
+</script>
+{% endblock %} 

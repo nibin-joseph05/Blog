@@ -1,0 +1,9 @@
+<div class="comment mb-3" id="comment-{{ comment.id }}">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h6 class="mb-1">{{ comment.author.get_full_name|default:comment.author.username }}</h6>
+            <p class="mb-1">{{ comment.content }}</p>
+            <small class="text-muted">Just now</small>
+        </div>
+    </div>
+</div> 

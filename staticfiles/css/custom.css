@@ -1,0 +1,119 @@
+/* Custom styles for the blog */
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+}
+
+/* Dark mode styles */
+[data-theme="dark"] {
+    --bg-primary: #1a1a1a;
+    --text-primary: #ffffff;
+    --bg-secondary: #2d2d2d;
+    --card-bg: #333333;
+    --border-color: #404040;
+}
+
+/* Light mode styles */
+[data-theme="light"] {
+    --bg-primary: #ffffff;
+    --text-primary: #000000;
+    --bg-secondary: #f8f9fa;
+    --card-bg: #ffffff;
+    --border-color: #dee2e6;
+}
+
+/* Common styles */
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    transition: transform 0.3s, background-color 0.3s;
+}
+
+.navbar {
+    background-color: var(--bg-secondary) !important;
+}
+
+/* Post styles */
+.post-title {
+    color: var(--text-primary);
+    font-weight: bold;
+}
+
+.post-meta {
+    color: var(--secondary-color);
+    font-size: 0.9rem;
+}
+
+.post-content {
+    line-height: 1.6;
+}
+
+/* Comment styles */
+.comment {
+    border-left: 3px solid var(--primary-color);
+    padding-left: 1rem;
+    margin-bottom: 1rem;
+}
+
+.comment-meta {
+    font-size: 0.85rem;
+    color: var(--secondary-color);
+}
+
+/* Like button styles */
+.like-button {
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.like-button.liked {
+    color: var(--danger-color);
+}
+
+/* Theme toggle button */
+.theme-toggle {
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 1rem;
+    background-color: transparent;
+    border: none;
+    color: var(--text-primary);
+}
+
+/* Admin dashboard styles */
+.stats-card {
+    text-align: center;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.stats-card .number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.stats-card .label {
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.8rem;
+} 

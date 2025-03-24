@@ -1,0 +1,105 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Notifications</h2>
+                {% if unread_notifications_count > 0 %}
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="mark_all_read">
+                    <button type="submit" class="btn btn-outline-primary">
+                        Mark all as read
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+
+            {% if notifications %}
+                <div class="list-group">
+                    {% for notification in notifications %}
+                    {% if notification.notification_type == 'comment' %}
+                    <div class="list-group-item {% if not notification.is_read %}list-group-item-light{% endif %}"
+                         data-notification-id="{{ notification.id }}">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ notification.message }}</h5>
+                            <small class="text-muted">{{ notification.created_at|timesince }} ago</small>
+                        </div>
+                        <p class="mb-1">
+                            <small>From: {{ notification.sender.get_full_name|default:notification.sender.username }}</small>
+                        </p>
+                        {% if notification.link %}
+                        <a href="{% url 'core:post_detail' slug=notification.link %}" class="btn btn-sm btn-outline-primary mt-2 notification-link" data-notification-id="{{ notification.id }}">
+                            View Comment
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    No notifications yet.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle notification link clicks
+    document.querySelectorAll('.notification-link').forEach(function(link) {
+        link.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const notificationId = this.dataset.notificationId;
+            const notificationItem = this.closest('.list-group-item');
+            
+            // Mark notification as read
+            if (notificationItem.classList.contains('list-group-item-light')) {
+                fetch(`/notifications/${notificationId}/mark-read/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        notificationItem.classList.remove('list-group-item-light');
+                        updateNotificationCount();
+                    }
+                });
+            }
+            
+            // Navigate to the post detail page
+            window.location.href = this.getAttribute('href');
+        });
+    });
+});
+
+function updateNotificationCount() {
+    fetch('/notifications/count/')
+        .then(response => response.json())
+        .then(data => {
+            const countElement = document.getElementById('notification-count');
+            if (countElement) {
+                countElement.textContent = data.count;
+                if (data.count === 0) {
+                    countElement.style.display = 'none';
+                } else {
+                    countElement.style.display = 'inline';
+                }
+            }
+        });
+}
+</script>
+{% endblock %} 
